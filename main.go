@@ -214,29 +214,6 @@ func (e *simpleEngine) UpdateLog(_ js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (e *simpleEngine) movelist() []string {
-	rows := make([]string, (len(e.positions))/2)
-	for i := 0; i < len(e.positions)-1; i++ {
-		if i%2 == 0 {
-			// white move
-			rows[i/2] = FAN(e.positions, i)
-		} else {
-			// black move
-			rows[i/2] += " " + FAN(e.positions, i)
-		}
-	}
-
-	return rows
-}
-
-var pieceNames map[int]string = map[int]string{
-	cc.Knight: "N",
-	cc.Bishop: "B",
-	cc.Rook:   "R",
-	cc.Queen:  "Q",
-	cc.King:   "K",
-}
-
 func pieceSymbol(white bool, piece int) string {
 	var idx int
 
