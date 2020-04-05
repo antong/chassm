@@ -1,0 +1,146 @@
+<!doctype html>
+<!--
+Copyright 2020 Anton Gyllenberg <anton@iki.fi>. All rights reserved.
+Copyright 2018 The Go Authors. All rights reserved.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>CHASSM - Go WASM Chess</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<link rel="stylesheet" href="chassm.css">
+	<link rel="stylesheet"
+		href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+		integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
+		crossorigin="anonymous">
+	<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
+		integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+	<!--
+	Add the following polyfill for Microsoft Edge 17/18 support:
+	<script src="https://cdn.jsdelivr.net/npm/text-encoding@0.7.0/lib/encoding.min.js"></script>
+	(see https://caniuse.com/#feat=textencoder)
+	-->
+	<script src="wasm_exec.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+		WebAssembly.instantiateStreaming(fetch("chassm.wasm"), go.importObject).then((result) => {
+			mod = result.module;
+			inst = result.instance;
+			main()
+		}).catch((err) => {
+			console.error(err);
+		});
+
+		async function run() {
+			console.clear();
+			//await go.run(inst);
+			go.run(inst);
+			//inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+		}
+
+		function main() {
+			run();
+			board = ChessBoard('board', {
+				pieceTheme: 'wikipedia-chesspieces/{piece}.png',
+				moveSpeed: 'fast',
+				onDragStart: onDragStart,
+				onDrop: onDrop,
+				onSnapEnd: onSnapEnd,
+				draggable: true
+			});
+			board.start();
+			board.clear(true);
+			fen = chassm.init();
+			board.position(fen, true);
+		}
+
+		function aimove() {
+			if (!chassm.isOver()) {
+				chassm.aimove();
+			}
+			refresh()
+		}
+
+		function onDragStart (source, piece, position, orientation) {
+			// only pick up pieces for White
+			if (piece.search(/^b/) !== -1) return false
+			if (!chassm.whitesMove()) return false
+			if (chassm.isOver()) return false
+		}
+
+		function onDrop (source, target) {
+			mvlan = source + target;
+			fen = chassm.move(mvlan);
+
+			// illegal move
+			if (fen === null) return 'snapback'
+		}
+
+		function onSnapEnd () {
+			// ai move for black
+			setTimeout(() => { aimove() ; }, 0)
+		}
+
+		function refresh () {
+			fen = chassm.fen();
+			board.position(fen, true);
+			chassm.updateLog("gamelog", "gameresult")
+		}
+
+		function undo () {
+			chassm.undo();
+			refresh();
+		}
+
+		function reset () {
+			chassm.init();
+			refresh();
+		}
+
+	</script>
+
+	<div class="main">
+	<div class="boardcontainer">
+		<div class="buttonbar">
+		<button onClick="aimove();" id="moveButton">Move</button>
+		<button onClick="undo();" id="undoButton">Undo</button>
+		<button onClick="reset();" id="reset">Reset</button>
+		</div>
+		<div id=board style="width: 400px"></div>
+	</div>
+	<div class="gamelog">
+		<ol id="gamelog">
+		</ol>
+		<p id="gameresult" style="text-align: center"></p>
+	</div>
+
+	</div>
+</body>
+
+</html>

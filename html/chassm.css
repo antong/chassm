@@ -1,0 +1,22 @@
+div.main {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 1em;
+}
+
+button {
+    margin: 1mm;
+}
+
+.gamelog {
+    margin: 1em;
+}
+
+.gamelog li {
+    padding-left: 1em;
+}
+
+span.gamelog-whitemove {
+    display: inline-block;
+    width: 4em;
+}
